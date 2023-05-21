@@ -18,6 +18,21 @@ blender_version = bpy.app.version
 modules = None
 ordered_classes = None
 
+PROPS = [
+    (
+        "use_packing",
+        bpy.props.BoolProperty(name="Pack Pivot to single UV Channel", default=False),
+    ),
+    (
+        "pivot_base_name",
+        bpy.props.StringProperty(name="Pivot Channel Base Name", default="pivotUv"),
+    ),
+    (
+        "pivot_level",
+        bpy.props.IntProperty(name="Pivot Level", default=0, min=0, max=2, step=1),
+    ),
+]
+
 
 def init():
     global modules
@@ -28,6 +43,9 @@ def init():
 
 
 def register():
+    for prop_name, prop_value in PROPS:
+        setattr(bpy.types.Scene, prop_name, prop_value)
+
     for cls in ordered_classes:
         bpy.utils.register_class(cls)
 
@@ -39,6 +57,9 @@ def register():
 
 
 def unregister():
+    for prop_name, _ in PROPS:
+        delattr(bpy.types.Scene, prop_name)
+
     for cls in reversed(ordered_classes):
         bpy.utils.unregister_class(cls)
 
