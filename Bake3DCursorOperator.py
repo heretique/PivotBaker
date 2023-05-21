@@ -141,10 +141,16 @@ class Bake3DCursorOperator(bpy.types.Operator):
             pivotLevel = context.scene.pivot_level
             pivotLevelName0 = f"{pivotBaseName}_{pivotLevel}_0"
             pivotLevelName1 = f"{pivotBaseName}_{pivotLevel}_1"
+
             if pivotLevelName0 not in bm.loops.layers.uv:
                 pivotLevel0 = bm.loops.layers.uv.new(pivotLevelName0)
+            else:
+                pivotLevel0 = bm.loops.layers.uv[pivotLevelName0]
+
             if pivotLevelName1 not in bm.loops.layers.uv:
                 pivotLevel1 = bm.loops.layers.uv.new(pivotLevelName1)
+            else:
+                pivotLevel1 = bm.loops.layers.uv[pivotLevelName1]
 
             self.clearUVLayer(bm, pivotLevel0)
             self.clearUVLayer(bm, pivotLevel1)
@@ -152,7 +158,9 @@ class Bake3DCursorOperator(bpy.types.Operator):
                 v = bm.verts[i]
                 for l in v.link_loops:
                     l[pivotLevel0].uv = (cursor.x, cursor.y)
+                    print("uv0: ", l[pivotLevel0].uv)
                     l[pivotLevel1].uv = (cursor.z, 1.0)
+                    print("uv1: ", l[pivotLevel1].uv)
             update_edit_mesh(obj.data)
 
         bm.free()
