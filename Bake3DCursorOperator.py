@@ -36,9 +36,9 @@ def unpackTwoFloats(packed_float):
 
 
 def pack_floats(float1, float2):
-    # Scale the floats to the range of -100 to +100
-    scaled1 = (float1 + 100) / 200  # Scale to 0-1 range
-    scaled2 = (float2 + 100) / 200  # Scale to 0-1 range
+    # Scale the floats to the range of -25 to +25
+    scaled1 = (float1 + 25) / 50  # Scale to 0-1 range
+    scaled2 = (float2 + 25) / 50  # Scale to 0-1 range
 
     # Convert the scaled floats to integers within the range of 0 to 65535 (2^16 - 1)
     int1 = int(scaled1 * 65535)
@@ -65,9 +65,9 @@ def unpack_float(packed_float):
     scaled1 = int1 / 65535
     scaled2 = int2 / 65535
 
-    # Rescale the floats to the original range of -100 to +100
-    float1 = scaled1 * 200 - 100
-    float2 = scaled2 * 200 - 100
+    # Rescale the floats to the original range of -25 to +25
+    float1 = scaled1 * 50 - 25
+    float2 = scaled2 * 50 - 25
 
     return float1, float2
 
@@ -104,26 +104,29 @@ class Bake3DCursorOperator(bpy.types.Operator):
             # get the 3D cursor location
             cursor = context.scene.cursor.location
             print("cursor: ", cursor)
-            activeUvLayer = bm.loops.layers.uv.verify()
-            if activeUvLayer is not None:
-                print("active uv layer:", activeUvLayer.name)
-                uv = (
-                    pack_floats(cursor.x, cursor.y),
-                    pack_floats(cursor.z, 1.0),
-                )
-                for i in vsel:
-                    v = bm.verts[i]
-                    for l in v.link_loops:
-                        l[activeUvLayer].uv = uv
-                        print(
-                            "vertex: ",
-                            v,
-                            "uv: ",
-                            l[activeUvLayer].uv,
-                            "unpacked: ",
-                            (unpack_float(uv[0]), unpack_float(uv[1])),
-                        )
-                update_edit_mesh(obj.data)
+            pivotBaseName = context.scene.pivot_base_name
+            pivotLevelNo = context.scene.pivot_level
+            pivotLevelName = f"{pivotBaseName}_{pivotLevelNo}"
+            pivotLevel = self.ensureUVLayer(bm, pivotLevelName)
+            self.clearUVLayer(bm, pivotLevel)
+            uv = (
+                pack_floats(cursor.x, cursor.y),
+                pack_floats(cursor.z, 1.0),
+            )
+            for i in vsel:
+                v = bm.verts[i]
+                for l in v.link_loops:
+                    l[pivotLevel].uv = uv
+                    print(
+                        "uv: ",
+                        l[pivotLevel].uv,
+                        "unpacked: ",
+                        (
+                            unpack_float(l[pivotLevel].uv[0]),
+                            unpack_float(l[pivotLevel].uv[1]),
+                        ),
+                    )
+            update_edit_mesh(obj.data)
         bm.free()
 
     def bakeUnpacked(self, context):
@@ -142,15 +145,8 @@ class Bake3DCursorOperator(bpy.types.Operator):
             pivotLevelName0 = f"{pivotBaseName}_{pivotLevel}_0"
             pivotLevelName1 = f"{pivotBaseName}_{pivotLevel}_1"
 
-            if pivotLevelName0 not in bm.loops.layers.uv:
-                pivotLevel0 = bm.loops.layers.uv.new(pivotLevelName0)
-            else:
-                pivotLevel0 = bm.loops.layers.uv[pivotLevelName0]
-
-            if pivotLevelName1 not in bm.loops.layers.uv:
-                pivotLevel1 = bm.loops.layers.uv.new(pivotLevelName1)
-            else:
-                pivotLevel1 = bm.loops.layers.uv[pivotLevelName1]
+            pivotLevel0 = self.ensureUVLayer(bm, pivotLevelName0)
+            pivotLevel1 = self.ensureUVLayer(bm, pivotLevelName1)
 
             self.clearUVLayer(bm, pivotLevel0)
             self.clearUVLayer(bm, pivotLevel1)
@@ -164,6 +160,12 @@ class Bake3DCursorOperator(bpy.types.Operator):
             update_edit_mesh(obj.data)
 
         bm.free()
+
+    def ensureUVLayer(self, bm, layer):
+        if layer not in bm.loops.layers.uv:
+            return bm.loops.layers.uv.new(layer)
+        else:
+            return bm.loops.layers.uv[layer]
 
     def clearUVLayer(self, bm, layer):
         for v in bm.verts:

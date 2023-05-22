@@ -20,6 +20,7 @@ class PivotBakerPanel(bpy.types.Panel):
         for prop_name, _ in PROPS:
             row = col.row()
             row.prop(context.scene, prop_name)
+        col.separator()
         col.operator("vertices.clear_pivot_uv_layer", text="Clear Pivot UV Layer")
         col.separator()
         col.operator("vertices.bake_3d_cursor", text="Bake 3D Cursor")
