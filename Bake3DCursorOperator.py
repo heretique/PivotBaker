@@ -1,6 +1,7 @@
 import bpy
 from bmesh import from_edit_mesh, update_edit_mesh
 import struct
+import math
 
 
 def packTwoFloats(float1, float2):
@@ -35,14 +36,19 @@ def unpackTwoFloats(packed_float):
     return float1, float2
 
 
+MIN = -25.0
+RANGE = 50.0
+SAMPLES = 65535.0
+
+
 def pack_floats(float1, float2):
-    # Scale the floats to the range of -25 to +25
-    scaled1 = (float1 + 25) / 50  # Scale to 0-1 range
-    scaled2 = (float2 + 25) / 50  # Scale to 0-1 range
+    # Scale the floats to the range of MIN to MIN + RANGE
+    scaled1 = (float1 - MIN) / RANGE  # Scale to 0-1 range
+    scaled2 = (float2 - MIN) / RANGE  # Scale to 0-1 range
 
     # Convert the scaled floats to integers within the range of 0 to 65535 (2^16 - 1)
-    int1 = int(scaled1 * 65535)
-    int2 = int(scaled2 * 65535)
+    int1 = math.floor(scaled1 * SAMPLES) & 0xFFFF
+    int2 = math.floor(scaled2 * SAMPLES) & 0xFFFF
 
     # Pack the two integers into a single 32-bit integer
     packed_int = (int2 << 16) | int1
@@ -53,7 +59,7 @@ def pack_floats(float1, float2):
     return packed_float
 
 
-def unpack_float(packed_float):
+def unpack_floats(packed_float):
     # Convert the packed float to a packed integer
     packed_int = struct.unpack("I", struct.pack("f", packed_float))[0]
 
@@ -62,14 +68,14 @@ def unpack_float(packed_float):
     int2 = (packed_int >> 16) & 0xFFFF
 
     # Convert the packed integers back to scaled floats
-    scaled1 = int1 / 65535
-    scaled2 = int2 / 65535
+    scaled1 = int1 / SAMPLES
+    scaled2 = int2 / SAMPLES
 
-    # Rescale the floats to the original range of -25 to +25
-    float1 = scaled1 * 50 - 25
-    float2 = scaled2 * 50 - 25
+    # Rescale the floats to the original range of MIN to MIN + RANGE
+    float1 = scaled1 * RANGE + MIN
+    float2 = scaled2 * RANGE + MIN
 
-    return float1, float2
+    return math.floor(float1 * 64.0) / 64.0, math.floor(float2 * 64.0) / 64.0
 
 
 class Bake3DCursorOperator(bpy.types.Operator):
@@ -122,8 +128,8 @@ class Bake3DCursorOperator(bpy.types.Operator):
                         l[pivotLevel].uv,
                         "unpacked: ",
                         (
-                            unpack_float(l[pivotLevel].uv[0]),
-                            unpack_float(l[pivotLevel].uv[1]),
+                            unpack_floats(l[pivotLevel].uv[0]),
+                            unpack_floats(l[pivotLevel].uv[1]),
                         ),
                     )
             update_edit_mesh(obj.data)
