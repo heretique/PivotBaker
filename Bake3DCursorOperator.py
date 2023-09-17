@@ -2,6 +2,7 @@ import bpy
 from bmesh import from_edit_mesh, update_edit_mesh
 import struct
 import math
+from mathutils import Vector
 
 
 def packTwoFloats(float1, float2):
@@ -54,14 +55,14 @@ def pack_floats(float1, float2):
     packed_int = (int2 << 16) | int1
 
     # Convert the packed integer to a float
-    packed_float = struct.unpack("f", struct.pack("I", packed_int))[0]
+    # packed_float = struct.unpack("f", struct.pack("I", packed_int))[0]
 
-    return packed_float
+    return float(packed_int)
 
 
 def unpack_floats(packed_float):
     # Convert the packed float to a packed integer
-    packed_int = struct.unpack("I", struct.pack("f", packed_float))[0]
+    packed_int = int(packed_float)
 
     # Extract the two packed integers from the packed integer
     int1 = packed_int & 0xFFFF
@@ -95,17 +96,25 @@ class Bake3DCursorOperator(bpy.types.Operator):
             self.bakePacked(context)
         else:
             self.bakeUnpacked(context)
-
+        print("Bake 3D Cursor executed")
         return {"FINISHED"}
 
     def bakePacked(self, context):
         print("Bake 3D Cursor Packed executed")
         obj = context.active_object
+        bbox = obj.bound_box
+        dimensions = obj.dimensions
+        bboxMin = Vector(min((v[0], v[1], v[2]) for v in bbox))
+        bboxMax = Vector(max((v[0], v[1], v[2]) for v in bbox))
+        print("bbox: ", [v[:] for v in bbox])
+        print("bboxMin: ", bboxMin)
+        print("bboxMax: ", bboxMax)
+        print("dimensions: ", dimensions)
         bm = from_edit_mesh(obj.data)
         vsel = [v.index for v in bm.verts if v.select]
 
         if vsel:
-            print("selected: ", *vsel)
+            # print("selected: ", *vsel)
 
             # get the 3D cursor location
             cursor = context.scene.cursor.location
@@ -119,6 +128,7 @@ class Bake3DCursorOperator(bpy.types.Operator):
                 pack_floats(cursor.x, cursor.y),
                 pack_floats(cursor.z, 1.0),
             )
+            # uv = (1455, 2365)
             for i in vsel:
                 v = bm.verts[i]
                 for l in v.link_loops:
