@@ -20,16 +20,20 @@ ordered_classes = None
 
 PROPS = [
     (
-        "use_packing",
-        bpy.props.BoolProperty(name="Pack Pivot to single UV Channel", default=False),
-    ),
-    (
         "pivot_base_name",
-        bpy.props.StringProperty(name="Pivot Channel Base Name", default="pivotUv"),
+        bpy.props.StringProperty(name="Pivot Channel Base Name", default="_pivot"),
     ),
     (
         "pivot_level",
-        bpy.props.IntProperty(name="Pivot Level", default=0, min=0, max=2, step=1),
+        bpy.props.IntProperty(name="Pivot Level", default=0, min=0, max=1, step=1),
+    ),
+    (
+        "color_channel_name",
+        bpy.props.StringProperty(
+            name="Color Channel Name",
+            default="PivotColors",
+            description="Color Channel Name for Pivot Colors",
+        ),
     ),
 ]
 

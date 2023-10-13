@@ -91,61 +91,11 @@ class Bake3DCursorOperator(bpy.types.Operator):
             return True
 
     def execute(self, context):
-        usePacking = context.scene.use_packing
-        if usePacking:
-            self.bakePacked(context)
-        else:
-            self.bakeUnpacked(context)
+        self.bakePivot(context)
         print("Bake 3D Cursor executed")
         return {"FINISHED"}
 
-    def bakePacked(self, context):
-        print("Bake 3D Cursor Packed executed")
-        obj = context.active_object
-        bbox = obj.bound_box
-        dimensions = obj.dimensions
-        bboxMin = Vector(min((v[0], v[1], v[2]) for v in bbox))
-        bboxMax = Vector(max((v[0], v[1], v[2]) for v in bbox))
-        print("bbox: ", [v[:] for v in bbox])
-        print("bboxMin: ", bboxMin)
-        print("bboxMax: ", bboxMax)
-        print("dimensions: ", dimensions)
-        bm = from_edit_mesh(obj.data)
-        vsel = [v.index for v in bm.verts if v.select]
-
-        if vsel:
-            # print("selected: ", *vsel)
-
-            # get the 3D cursor location
-            cursor = context.scene.cursor.location
-            print("cursor: ", cursor)
-            pivotBaseName = context.scene.pivot_base_name
-            pivotLevelNo = context.scene.pivot_level
-            pivotLevelName = f"{pivotBaseName}_{pivotLevelNo}"
-            pivotLevel = self.ensureUVLayer(bm, pivotLevelName)
-            self.clearUVLayer(bm, pivotLevel)
-            uv = (
-                pack_floats(cursor.x, cursor.y),
-                pack_floats(cursor.z, 1.0),
-            )
-            # uv = (1455, 2365)
-            for i in vsel:
-                v = bm.verts[i]
-                for l in v.link_loops:
-                    l[pivotLevel].uv = uv
-                    print(
-                        "uv: ",
-                        l[pivotLevel].uv,
-                        "unpacked: ",
-                        (
-                            unpack_floats(l[pivotLevel].uv[0]),
-                            unpack_floats(l[pivotLevel].uv[1]),
-                        ),
-                    )
-            update_edit_mesh(obj.data)
-        bm.free()
-
-    def bakeUnpacked(self, context):
+    def bakePivot(self, context):
         print("Bake 3D Cursor Unpacked executed")
         obj = context.active_object
         bm = from_edit_mesh(obj.data)
@@ -158,32 +108,38 @@ class Bake3DCursorOperator(bpy.types.Operator):
             print("cursor: ", cursor)
             pivotBaseName = context.scene.pivot_base_name
             pivotLevel = context.scene.pivot_level
-            pivotLevelName0 = f"{pivotBaseName}_{pivotLevel}_0"
-            pivotLevelName1 = f"{pivotBaseName}_{pivotLevel}_1"
+            pivotLayerName = f"{pivotBaseName}_{pivotLevel}"
 
-            pivotLevel0 = self.ensureUVLayer(bm, pivotLevelName0)
-            pivotLevel1 = self.ensureUVLayer(bm, pivotLevelName1)
+            pivotLayer = self.ensurePivotLayer(bm, pivotLayerName)
+            colorLayer = self.ensureVertexColors(context, bm)
 
-            self.clearUVLayer(bm, pivotLevel0)
-            self.clearUVLayer(bm, pivotLevel1)
             for i in vsel:
                 v = bm.verts[i]
                 for l in v.link_loops:
-                    l[pivotLevel0].uv = (cursor.x, cursor.y)
-                    print("uv0: ", l[pivotLevel0].uv)
-                    l[pivotLevel1].uv = (cursor.z, 1.0)
-                    print("uv1: ", l[pivotLevel1].uv)
+                    l[pivotLayer] = cursor
+                    currentColor = l[colorLayer]
+                    if pivotLevel == 0:
+                        l[colorLayer] = (1.0, currentColor.y, currentColor.z, 1.0)
+                    elif pivotLevel == 1:
+                        l[colorLayer] = (currentColor.x, 1.0, currentColor.z, 1.0)
+
             update_edit_mesh(obj.data)
 
         bm.free()
 
-    def ensureUVLayer(self, bm, layer):
-        if layer not in bm.loops.layers.uv:
-            return bm.loops.layers.uv.new(layer)
+    def ensurePivotLayer(self, bm, layer):
+        if layer not in bm.loops.layers.float_vector:
+            return bm.loops.layers.float_vector.new(layer)
         else:
-            return bm.loops.layers.uv[layer]
+            return bm.loops.layers.float_vector[layer]
 
-    def clearUVLayer(self, bm, layer):
-        for v in bm.verts:
-            for l in v.link_loops:
-                l[layer].uv = (0.0, 0.0)
+    def ensureVertexColors(self, context, bm):
+        colorLayerName = context.scene.color_channel_name
+        if colorLayerName not in bm.loops.layers.color:
+            colorLayer = bm.loops.layers.color.new(colorLayerName)
+            for v in bm.verts:
+                for l in v.link_loops:
+                    l[colorLayer] = (0.0, 0.0, 0.0, 1.0)
+            return colorLayer
+        else:
+            return bm.loops.layers.color[colorLayerName]
