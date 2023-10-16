@@ -21,6 +21,9 @@ class ResetPivotsOperator(bpy.types.Operator):
         pivotLayerName0 = f"{pivotBaseName}_0"
         pivotLayerName1 = f"{pivotBaseName}_1"
         self.ensureAttributes(context, bm, pivotLayerName0, pivotLayerName1)
+        bpy.ops.geometry.color_attribute_render_set(
+            name=context.scene.color_channel_name
+        )
         colorLayer = bm.loops.layers.color[context.scene.color_channel_name]
         pivotLayer0 = bm.loops.layers.float_vector[pivotLayerName0]
         pivotLayer1 = bm.loops.layers.float_vector[pivotLayerName1]

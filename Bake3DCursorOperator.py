@@ -112,6 +112,9 @@ class Bake3DCursorOperator(bpy.types.Operator):
 
             pivotLayer = self.ensurePivotLayer(bm, pivotLayerName)
             colorLayer = self.ensureVertexColors(context, bm)
+            bpy.ops.geometry.color_attribute_render_set(
+                name=context.scene.color_channel_name
+            )
 
             for i in vsel:
                 v = bm.verts[i]
